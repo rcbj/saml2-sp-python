@@ -58,7 +58,7 @@ The tests sign, encrypt, and decrypt with `cryptography` and exclusive canonical
 - `src/saml2_sp/` the library (`ServiceProvider`, metadata, bindings, signatures, encryption, the replay cache, `ssf/`)
 - `tests/` pytest, including the stub identity provider
 - `demo/` the stdlib `http.server` application
-- `scripts/configure_iya_sts.py` registers that demo with iya-sts and writes the listener CA trust chain to the file `idpCa` names
+- `scripts/configure_iya_sts.py` registers that demo with iya-sts and writes the listener CA trust chain to the file `idpCa` names. A password iya-sts generates for the test user is never printed: it goes to `demo/generated/<user>.password`, mode 0600, and only the path is printed
 - `scripts/trust_chain.py` holds `save_trust_chain()` and refreshes that file
 - `scripts/live_iya_sts.py` signs the demo in to iya-sts and checks `GET /live-status`
 - `.github/workflows/nightly.yml` runs the unit suite and the live script once every 24 hours
