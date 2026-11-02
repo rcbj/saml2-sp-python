@@ -49,7 +49,9 @@ docker build --target test .
 
 The suite runs in a container.
 
-The tests sign, encrypt, and decrypt with `cryptography` and exclusive canonicalization from `lxml`. They include a stub identity provider and a stub transmitter. They do not need a live iya-sts.
+The tests sign, encrypt, and decrypt with `cryptography` and exclusive canonicalization from `lxml`. They include a stub identity provider and a stub transmitter. Those stub tests do not start iya-sts.
+
+`python3 scripts/live_iya_sts.py` is the live half. It builds this demo image, starts the latest main branch of iya-sts in memory mode with persistence and clustering off when `IYA_STS_URL` is unset, registers the demo, signs in, and requires a credential-change event and a session-revoked event on `GET /live-status`. The second event ends the local session. It uses two high ports and never binds 3000 or 8081. The nightly workflow runs the unit suite and this script once every 24 hours.
 
 ## Layout
 
@@ -57,6 +59,8 @@ The tests sign, encrypt, and decrypt with `cryptography` and exclusive canonical
 - `tests/` pytest, including the stub identity provider
 - `demo/` the stdlib `http.server` application
 - `scripts/configure_iya_sts.py` registers that demo with iya-sts
+- `scripts/live_iya_sts.py` signs the demo in to iya-sts and checks `GET /live-status`
+- `.github/workflows/nightly.yml` runs the unit suite and the live script once every 24 hours
 - `Dockerfile` and `docker-compose.yml` run the demo (`network_mode: host`, `PORT` defaults to 3000)
 
 ## Demo
@@ -65,7 +69,7 @@ The tests sign, encrypt, and decrypt with `cryptography` and exclusive canonical
 docker compose up --build
 ```
 
-`PORT` defaults to 3000. `GET /healthz` returns `200` and the body `ok` even when the identity provider metadata is not on disk yet. The home page offers sign-in. `/login` answers a signed AuthnRequest (redirect, or a POST form). `/saml/acs` is the assertion consumer. `/saml/metadata` is this service provider's metadata. A loopback `entityId` and assertion consumer URL follow `PORT`. Any other host stays as written. `PUBLIC_URL` or `--public-url` replaces the origin and keeps the path; the default `http://localhost:3000` is not treated as an explicit public URL.
+`PORT` defaults to 3000. `GET /healthz` returns `200` and the body `ok` even when the identity provider metadata is not on disk yet. The home page offers sign-in. `/login` answers a signed AuthnRequest (redirect, or a POST form). `/saml/acs` is the assertion consumer. `/saml/metadata` is this service provider's metadata. `GET /live-status` does not need an account id. It is JSON: `signedIn` (true when any local account session exists), `subject`, the receiver state, and the Shared Signals events this process has accepted (`type` and `jti` only). A loopback `entityId` and assertion consumer URL follow `PORT`. Any other host stays as written. `PUBLIC_URL` or `--public-url` replaces the origin and keeps the path; the default `http://localhost:3000` is not treated as an explicit public URL. The live script never binds port 3000 or 8081.
 
 `demo/saml.json` points at `file:` paths under `demo/generated/` and does not contain a key. Generate the key pair and, against a running iya-sts, register the application with:
 

@@ -18,7 +18,7 @@ docker build --target test .
 
 The `test` stage runs `pip install --no-cache-dir ".[dev]" && pytest` in `python:3.11-slim`. GitHub Actions uses that command. Do not run pytest on the host. The demo image does not run the suite.
 
-Signatures and decryption are real (`cryptography`, `lxml` exclusive canonicalization). The stub identity provider is in `tests/stub_idp.py`. No live iya-sts.
+Signatures and decryption are real (`cryptography`, `lxml` exclusive canonicalization). The stub identity provider is in `tests/stub_idp.py`. The stub tests do not start iya-sts. `python3 scripts/live_iya_sts.py` does: it signs the demo in and checks credential-change and session-revoked on `GET /live-status`. The nightly workflow runs the unit suite and that script once every 24 hours. Neither binds port 3000 or 8081.
 
 ## Layout
 
@@ -26,7 +26,7 @@ Signatures and decryption are real (`cryptography`, `lxml` exclusive canonicaliz
 
 ## Demo
 
-`docker compose up --build`. `GET /healthz` is `200` with body `ok`. Pages: sign-in, `/login` (redirect or POST form), `/saml/acs`, logout of one account or every account, metadata, and per-account Shared Signals events. Loopback entityID and assertion-consumer URLs follow `PORT`. Other hosts stay as written. `PUBLIC_URL` or `--public-url` replaces the origin and keeps the path. The default `http://localhost:3000` is not an explicit public URL. `demo/saml.json` uses `file:` placeholders and omits `signals`. Do not commit `demo/generated/`.
+`docker compose up --build`. `GET /healthz` is `200` with body `ok`. Pages: sign-in, `/login` (redirect or POST form), `/saml/acs`, logout of one account or every account, metadata, and per-account Shared Signals events. `GET /live-status` does not need an account id. It is JSON: `signedIn` is true when any local account session exists, plus `subject`, the receiver state, and accepted events (`type` and `jti` only). Loopback entityID and assertion-consumer URLs follow `PORT`. Other hosts stay as written. `PUBLIC_URL` or `--public-url` replaces the origin and keeps the path. The default `http://localhost:3000` is not an explicit public URL. `demo/saml.json` uses `file:` placeholders and omits `signals`. Do not commit `demo/generated/`. The live script and the nightly workflow never bind port 3000 or 8081.
 
 ## Signals
 

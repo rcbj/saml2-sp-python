@@ -8,6 +8,8 @@ person a tab shows is `/u/<account>/`. `saml_pending` carries the outstanding Au
 across the cross-site POST of the HTTP-POST binding.
 
 GET  /healthz returns 200 and the body ok, before the identity provider is reachable.
+GET  /live-status is JSON and does not need an account id: whether any local account
+session exists, the subject, the receiver state, and the accepted events (type and jti).
 """
 
 from __future__ import annotations
@@ -117,6 +119,7 @@ sequence = 0
 verifications_asked: dict[str, str] = {}
 stream_status = None
 receiver = None
+live_events: list[dict] = []
 receiver_state = (
     "not configured (signals are off)" if SIGNALS_OFF
     else "starting" if SSF
@@ -220,6 +223,7 @@ def start_receiver(sp: ServiceProvider) -> None:
 
     def on_event(event):
         global sequence, stream_status
+        live_events.append({"type": event.type, "jti": event.jti})
         sequence += 1
         subject = event.subject or {}
         entry = {
@@ -570,6 +574,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/healthz":
             self._send(200, "ok", {"content-type": "text/plain"})
             return
+        if path == "/live-status" and method == "GET":
+            self._live_status()
+            return
         if path == "/styles.css":
             self._send(200, STYLES, {"content-type": "text/css; charset=utf-8", "cache-control": "max-age=300"})
             return
@@ -659,6 +666,21 @@ class Handler(BaseHTTPRequestHandler):
             self._redirect("/", {"status": 303, "set-cookie": cookie("aset", "", max_age=0)})
             return
         self._send(404, page("Not found", "<h1>Not found</h1>"))
+
+    def _live_status(self) -> None:
+        now = time.time() * 1000
+        alive = [found for found in sessions.values() if found["expires"] > now]
+        subject = None
+        if alive:
+            name = getattr(alive[0]["login"], "name_id", None)
+            subject = name if isinstance(name, str) and name else None
+        body = {
+            "signedIn": bool(alive),
+            "subject": subject,
+            "receiver": receiver_state,
+            "events": [{"type": item["type"], "jti": item["jti"]} for item in list(live_events)],
+        }
+        self._send(200, json.dumps(body), {"content-type": "application/json"})
 
     def _events(self, here: dict, query: dict) -> None:
         sid = here["sid"]
