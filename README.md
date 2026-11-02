@@ -17,9 +17,16 @@ who = sp.acs(method, url, body, request_id=request.id)
 
 `saml.json` uses the same keys as the Node service provider: `entityId`, `acsUrl`, `privateKey`, `certificate`, `idpMetadata`, and the optional `requestBinding`, `responseBinding`, `idpCa`, `idpEntityId`, `nameIdFormat`, `clockSkewSeconds`, `wantAssertionsSigned`, `wantAssertionsEncrypted`, `allowUnsolicited`, and `signals`. A value may be PEM text, a file path, or an `env:` / `file:` placeholder. `signals` omitted or `true` leaves the Shared Signals receiver available. `false` turns it off and does not require transmitter metadata. Any other value is a configuration error: `signals must be true or false`. The resolved configuration omits `signals` when the receiver is on and includes `signals: false` when it is off. SAML does not send OAuth scopes, so the flag does not change the `AuthnRequest`.
 
-```bash
-saml2-sp generate-keys --config demo/saml.json
-saml2-sp metadata --config demo/saml.json
+```sh
+docker compose build
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$PWD/demo:/app/demo" \
+  saml2-sp-python-demo \
+  saml2-sp generate-keys --config demo/saml.json
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$PWD/demo:/app/demo" \
+  saml2-sp-python-demo \
+  saml2-sp metadata --config demo/saml.json
 ```
 
 ## Shared Signals
@@ -37,11 +44,10 @@ The receiver discovers the transmitter, keeps one poll stream (`urn:ietf:rfc:893
 ## Tests
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e ".[dev]"
-pytest
+docker build --target test .
 ```
+
+The suite runs in a container.
 
 The tests sign, encrypt, and decrypt with `cryptography` and exclusive canonicalization from `lxml`. They include a stub identity provider and a stub transmitter. They do not need a live iya-sts.
 
@@ -56,7 +62,7 @@ The tests sign, encrypt, and decrypt with `cryptography` and exclusive canonical
 ## Demo
 
 ```bash
-python demo/app.py
+docker compose up --build
 ```
 
 `PORT` defaults to 3000. `GET /healthz` returns `200` and the body `ok` even when the identity provider metadata is not on disk yet. The home page offers sign-in. `/login` answers a signed AuthnRequest (redirect, or a POST form). `/saml/acs` is the assertion consumer. `/saml/metadata` is this service provider's metadata. A loopback `entityId` and assertion consumer URL follow `PORT`. Any other host stays as written. `PUBLIC_URL` or `--public-url` replaces the origin and keeps the path; the default `http://localhost:3000` is not treated as an explicit public URL.

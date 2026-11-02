@@ -13,8 +13,10 @@ Request bindings are `redirect` and `post`. Response bindings are `post`, `redir
 ## Tests
 
 ```bash
-python3 -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]" && pytest
+docker build --target test .
 ```
+
+The `test` stage runs `pip install --no-cache-dir ".[dev]" && pytest` in `python:3.11-slim`. GitHub Actions uses that command. Do not run pytest on the host. The demo image does not run the suite.
 
 Signatures and decryption are real (`cryptography`, `lxml` exclusive canonicalization). The stub identity provider is in `tests/stub_idp.py`. No live iya-sts.
 
@@ -24,7 +26,7 @@ Signatures and decryption are real (`cryptography`, `lxml` exclusive canonicaliz
 
 ## Demo
 
-`python demo/app.py`. `GET /healthz` is `200` with body `ok`. Pages: sign-in, `/login` (redirect or POST form), `/saml/acs`, logout of one account or every account, metadata, and per-account Shared Signals events. Loopback entityID and assertion-consumer URLs follow `PORT`. Other hosts stay as written. `PUBLIC_URL` or `--public-url` replaces the origin and keeps the path. The default `http://localhost:3000` is not an explicit public URL. `demo/saml.json` uses `file:` placeholders and omits `signals`. Do not commit `demo/generated/`.
+`docker compose up --build`. `GET /healthz` is `200` with body `ok`. Pages: sign-in, `/login` (redirect or POST form), `/saml/acs`, logout of one account or every account, metadata, and per-account Shared Signals events. Loopback entityID and assertion-consumer URLs follow `PORT`. Other hosts stay as written. `PUBLIC_URL` or `--public-url` replaces the origin and keeps the path. The default `http://localhost:3000` is not an explicit public URL. `demo/saml.json` uses `file:` placeholders and omits `signals`. Do not commit `demo/generated/`.
 
 ## Signals
 
