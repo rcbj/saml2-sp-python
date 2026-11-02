@@ -97,6 +97,7 @@ def fetch_published(origin):
     port = parts.port or 443
     target = f"{parts.scheme}://{host}:{port}/tls/server-certificate" if port not in (443,) else f"{parts.scheme}://{host}/tls/server-certificate"
     context = ssl._create_unverified_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     raw = b""
     status = 0
     conn_host = host
@@ -131,6 +132,7 @@ def fetch_handshake(origin):
     except Exception:
         pass
     context = ssl._create_unverified_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     with socket.create_connection((host, port), timeout=TIMEOUT_S) as sock:
         with context.wrap_socket(sock, server_hostname=servername) as tls:
             der = tls.getpeercert(binary_form=True)

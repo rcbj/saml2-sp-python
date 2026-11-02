@@ -119,6 +119,7 @@ class Client:
     def __init__(self, ca_file):
         self.jar = http.cookiejar.CookieJar(policy=LoopbackCookiePolicy())
         self.ssl = ssl.create_default_context(cafile=str(ca_file))
+        self.ssl.minimum_version = ssl.TLSVersion.TLSv1_2
 
     def request(self, method, url, body=None, headers=None, timeout=60):
         parts = urllib.parse.urlsplit(url)
@@ -211,6 +212,7 @@ def wait_ready(origin, timeout):
     """Wait for iya-sts's IdP metadata to answer. Readiness only: nothing is trusted from it."""
     parts = urllib.parse.urlsplit(origin)
     context = ssl._create_unverified_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     deadline = time.time() + timeout
     last = None
     while time.time() < deadline:
@@ -291,6 +293,9 @@ def autopost_form(payload):
 
 
 class Driver:
+    # No request is traced: the sign-in URLs and statuses flow from a driver that holds the
+    # test user's password, and nothing derived from a password may reach a log line
+    # (CodeQL py/clear-text-logging-sensitive-data). A failure raises with what it needs.
     def __init__(self, client, sts_origin, demo_origin, username, password):
         self.client = client
         self.sts_origin = sts_origin.rstrip("/")
@@ -303,7 +308,6 @@ class Driver:
 
     def get(self, url):
         status, headers, payload = self.client.request("GET", url, headers={"accept": "text/html,application/json"})
-        print(f"GET {status} {url}", flush=True)
         return status, headers, payload
 
     def post_json(self, url, body, csrf):
@@ -314,7 +318,6 @@ class Driver:
             "origin": self.sts_origin,
             "x-csrf-token": csrf,
         })
-        print(f"POST {status} {url}", flush=True)
         return status, headers, payload
 
     def open_view(self, shell_url, api_url):
@@ -322,7 +325,6 @@ class Driver:
         if status in (301, 302, 303, 307, 308):
             return {"redirect": resolve_url(shell_url, one_header(headers, "location"))}
         view_status, _headers, view_payload = self.client.request("GET", api_url, headers={"accept": "application/json"})
-        print(f"GET {view_status} {api_url}", flush=True)
         parsed = json_body(view_payload) or {}
         if view_status in (301, 302, 303, 307, 308):
             return {"redirect": resolve_url(api_url, one_header(_headers, "location"))}
@@ -372,7 +374,6 @@ class Driver:
                 "content-type": "application/x-www-form-urlencoded",
                 "origin": origin_of(url),
             })
-            print(f"POST {posted} {action}", flush=True)
             if posted in (301, 302, 303, 307, 308):
                 return resolve_url(action, one_header(post_headers, "location"))
             if origin_of(action).rstrip("/") == self.demo_origin:
